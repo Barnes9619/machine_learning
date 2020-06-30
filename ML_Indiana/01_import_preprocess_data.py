@@ -121,7 +121,7 @@ joined.to_csv('final_data_scaled.csv')
 # Use 70% of the data for training, 15% for testing, 15% for validation.
 # Subset data for training, testing, validation
 training_df = joined.sample(frac=.7, random_state=663168)
-testing_df = joined.loc[~usable_data.index.isin(training_df.index)]
+testing_df = joined.loc[~joined.index.isin(training_df.index)]
 validation_df = testing_df.sample(frac=.5, random_state=663168)
 testing_df = testing_df.loc[~testing_df.index.isin(validation_df.index)]
 
@@ -131,6 +131,6 @@ testing_df.to_csv('testing_data.csv')
 validation_df.to_csv('validation_data.csv')
 
 # Print number of input nodes for network
-# Number of columns minus 3 (index, subwatershed, Unnamed: 0)
-column_count = int(len(list(training_df.columns))) - 3
-print('Number of input nodes: ' + str(column_count))
+# Number of columns minus 2 (subwatershed, Unnamed: 0)
+node_count = int(len(list(training_df.columns)) - 2)
+print('Number of input nodes: ' + str(node_count))

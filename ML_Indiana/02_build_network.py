@@ -1,5 +1,8 @@
 import pandas as pd
 import tensorflow as tf
+from tensorflow.keras.wrappers.scikit_learn import KerasClassifier, KerasRegressor
+import eli5
+from eli5.sklearn import PermutationImportance
 from matplotlib import pyplot
 import os
 import glob
@@ -13,39 +16,41 @@ training_df.drop(['Unnamed: 0', 'subwatershed'], axis=1, inplace=True)
 testing_df = pd.read_csv('testing_data.csv')
 testing_df.drop(['Unnamed: 0', 'subwatershed'], axis=1, inplace=True)
 
+# Load the validation data
+validation_df = pd.read_csv("validation_data.csv")
+validation_df.drop(['Unnamed: 0', 'subwatershed'], axis=1, inplace=True)
+
 # Predicting 'policy_total_building_coverage_avg' & 'claims_total_building_insurance_coverage_avg'
-prediction_columns = [
-    'policy_total_building_coverage_avg',
-    'claims_total_building_insurance_coverage_avg'
-]
+prediction_column = 'claims_total_building_insurance_coverage_avg'
 
 # Format training data
-x_train = training_df.drop(prediction_columns, axis=1).values
-y_train = training_df[prediction_columns].values
+x_train = training_df.drop(prediction_column, axis=1).values
+y_train = training_df[prediction_column].values
 
 # Format the testing data
-x_test = testing_df.drop(prediction_columns, axis=1).values
-y_test = testing_df[prediction_columns].values
+x_test = testing_df.drop(prediction_column, axis=1).values
+y_test = testing_df[prediction_column].values
 
-input_nodes = 43
-epochs = 30
-dense_nodes_1 = 1024
-dropout_1 = .4
-dense_nodes_2 = 2048
-dropout_2 = .2
-dense_nodes_3 = 1024
-dropout_3 = .2
+# Format the validation data
+x_validate = validation_df.drop(prediction_column, axis=1).values
+y_validate = validation_df[prediction_column].values
+
 
 # Define the model
-model = tf.keras.Sequential()
-model.add(tf.keras.layers.Dense(dense_nodes_1, input_dim=input_nodes, activation='relu', name='Initial'))
-model.add(tf.keras.layers.Dropout(dropout_1, name='Dropout_1'))
-model.add(tf.keras.layers.Dense(dense_nodes_2, activation='relu', name='Dense_2'))
-model.add(tf.keras.layers.Dropout(dropout_2, name='Dropout_2'))
-model.add(tf.keras.layers.Dense(dense_nodes_3, activation='relu', name='Dense_3'))
-model.add(tf.keras.layers.Dropout(dropout_3, name='Dropout_3'))
-model.add(tf.keras.layers.Dense(2, activation='linear', name='Output'))
-model.compile(loss="mean_squared_error", optimizer="adam")
+def base_model(input_nodes=44):
+    model = tf.keras.Sequential()
+    model.add(tf.keras.layers.Dense(86, input_dim=input_nodes, activation='relu', name='Initial'))
+    model.add(tf.keras.layers.Dropout(.2, name='Dropout_1'))
+    model.add(tf.keras.layers.Dense(172, activation='relu', name='Dense_2'))
+    model.add(tf.keras.layers.Dropout(.2, name='Dropout_2'))
+    model.add(tf.keras.layers.Dense(86, activation='relu', name='Dense_3'))
+    model.add(tf.keras.layers.Dropout(.2, name='Dropout_3'))
+    model.add(tf.keras.layers.Dense(1, activation='linear', name='Output'))
+    model.compile(loss="mean_squared_error", optimizer="adam")
+    return model
+
+
+epochs = 30
 
 # Log with TensorBoard
 logger = tf.keras.callbacks.TensorBoard(
@@ -54,19 +59,29 @@ logger = tf.keras.callbacks.TensorBoard(
     histogram_freq=3
 )
 
+my_model = KerasRegressor(
+    build_fn=base_model,
+    input_nodes=44,
+    epochs=epochs
+)
+
+
 # Train the model
-history = model.fit(
+history = my_model.fit(
     x_train,
     y_train,
-    validation_data=(x_test, y_test),
+    validation_data=(x_validate, y_validate),
     epochs=epochs,
     shuffle=True,
     verbose=2,
     callbacks=[logger]
 )
 
-train_mse = model.evaluate(x_train, y_train, verbose=0)
-test_mse = model.evaluate(x_test, y_test, verbose=0)
+perm = PermutationImportance(my_model, random_state=1).fit(x_train, y_train)
+eli5.show_weights(perm, feature_names=x_train.columns.tolist())
+
+train_mse = my_model.evaluate(x_train, y_train, verbose=0)
+test_mse = my_model.evaluate(x_test, y_test, verbose=0)
 print('Mean squared error (MSE) values:')
 print('Train: %.3f, Test: %.3f' % (train_mse, test_mse))
 
@@ -97,8 +112,9 @@ pyplot.legend()
 pyplot.savefig((run_dir + '/plot.png'))
 pyplot.show()
 
-# Save training and testing data
+# Save training, validation and testing data
 training_df.to_csv((run_dir + '/training_data.csv'))
+validation_df.to_csv((run_dir + '/validation_data.csv'))
 testing_df.to_csv((run_dir + '/testing_data.csv'))
 
 column_list = list(training_df.columns)
@@ -111,7 +127,7 @@ readme.write(('Epochs: {} \n'.format(epochs)))
 readme.write(('Layer 1: Dense: {} nodes, {} input nodes \n'.format(dense_nodes_1, input_nodes)))
 readme.write(('Layer 2: Dropout: {}\n'.format(dropout_1)))
 readme.write(('Layer 3: Dense: {} nodes\n'.format(dense_nodes_2)))
-readme.write(('"Layer 4: Dropout: {}\n'.format(dropout_2)))
+readme.write(('Layer 4: Dropout: {}\n'.format(dropout_2)))
 readme.write(('Layer 5: Dense: {} nodes\n'.format(dense_nodes_3)))
 readme.write(('Layer 6: Dropout: {}\n'.format(dropout_3)))
 readme.write('Layer 7: Dense: 2 nodes (final)\n')
