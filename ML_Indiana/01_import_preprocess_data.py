@@ -74,6 +74,7 @@ drop_list = [
     # 'orb50yr06ha_am',
     # 'orb50yr12ha_am',
     # 'orb50yr24ha_am',
+    # 'policy_total_building_coverage_avg',
     'File'          # Always remove
 ]
 
@@ -83,10 +84,6 @@ joined.drop(
     axis=1,
     inplace=True
 )
-
-# Drop all rows that have no claims info
-joined['policy_total_building_coverage_avg'].fillna('none', inplace=True)
-joined = joined[joined['policy_total_building_coverage_avg'] != 'none']
 
 # Drop 'bad data'
 joined = joined[joined['subwatershed'] != 41900000200]
@@ -100,20 +97,20 @@ joined.to_csv('joined_data.csv')
 scaler = MinMaxScaler(feature_range=(0, 1))
 column_list = list(joined.columns)
 column_list.remove('subwatershed')
-# for i, item in enumerate(column_list):
-#     print(i, item)
+
 joined[column_list] = scaler.fit_transform(joined[column_list])
-print("Note: policy_..._coverage_avg values were scaled by multiplying by {:.12f} and adding {:.10f}".format(
-    scaler.scale_[43],
-    scaler.min_[43])
-)
+
+scaler_by = scaler.scale_[44]
+scaler_min = scaler.min_[44]
+
 print("Note: claims_..._coverage_avg values were scaled by multiplying by {:.12f} and adding {:.10f}".format(
-    scaler.scale_[44],
-    scaler.min_[44])
+    scaler_by,
+    scaler_min)
 )
+
 i_rows = len(joined)
 print('Initial row count for data: ' + str(i_rows))
-usable_data = joined[(np.abs(stats.zscore(joined)) < 3).all(axis=1)]
+usable_data = joined[(np.abs(stats.zscore(joined)) < 3.5).all(axis=1)]
 u_rows = len(usable_data)
 print("- Identified and removed {} outliers.".format(str(i_rows-u_rows)))
 print('Updated row count for all data: ' + str(u_rows))
