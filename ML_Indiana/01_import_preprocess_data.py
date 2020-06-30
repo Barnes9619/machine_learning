@@ -108,19 +108,20 @@ print("Note: claims_..._coverage_avg values were scaled by multiplying by {:.12f
     scaler_min)
 )
 
-i_rows = len(joined)
-print('Initial row count for data: ' + str(i_rows))
-usable_data = joined[(np.abs(stats.zscore(joined)) < 3.5).all(axis=1)]
-u_rows = len(usable_data)
-print("- Identified and removed {} outliers.".format(str(i_rows-u_rows)))
-print('Updated row count for all data: ' + str(u_rows))
+# REMOVED UNTIL 0s FOR MONETARY CLAIMS VALUES CAN BE ACCOUNTED FOR
+# i_rows = len(joined)
+# print('Initial row count for data: ' + str(i_rows))
+# usable_data = joined[(np.abs(stats.zscore(joined)) < 3).all(axis=1)]
+# u_rows = len(usable_data)
+# print("- Identified and removed {} outliers.".format(str(i_rows-u_rows)))
+# print('Updated row count for all data: ' + str(u_rows))
 
-usable_data.to_csv('final_data_scaled.csv')
+joined.to_csv('final_data_scaled.csv')
 
 # Use 70% of the data for training, 15% for testing, 15% for validation.
 # Subset data for training, testing, validation
-training_df = usable_data.sample(frac=.7, random_state=663168)
-testing_df = usable_data.loc[~usable_data.index.isin(training_df.index)]
+training_df = joined.sample(frac=.7, random_state=663168)
+testing_df = joined.loc[~usable_data.index.isin(training_df.index)]
 validation_df = testing_df.sample(frac=.5, random_state=663168)
 testing_df = testing_df.loc[~testing_df.index.isin(validation_df.index)]
 
