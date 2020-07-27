@@ -37,7 +37,7 @@ y_validate = validation_df[prediction_column].values
 
 
 # Define the model
-def base_model(input_nodes=44):
+def base_model(input_nodes=72):
     model = tf.keras.Sequential()
     model.add(tf.keras.layers.Dense(86, input_dim=input_nodes, activation='relu', name='Initial'))
     model.add(tf.keras.layers.Dropout(.2, name='Dropout_1'))
@@ -61,7 +61,7 @@ logger = tf.keras.callbacks.TensorBoard(
 
 my_model = KerasRegressor(
     build_fn=base_model,
-    input_nodes=44,
+    input_nodes=72,
     epochs=epochs
 )
 
